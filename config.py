@@ -19,3 +19,7 @@ class Config:
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_FROM') or 'noreply@suxess.com'
+
+    # Security for Cross-Origin Cookies (Vercel -> PythonAnywhere)
+    SESSION_COOKIE_SAMESITE = 'None'
+    SESSION_COOKIE_SECURE = True  # Required if SameSite=None
