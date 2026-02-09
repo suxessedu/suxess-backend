@@ -323,3 +323,78 @@ def get_lesson_logs():
         'total': pagination.total, 'pages': pagination.pages, 'current_page': pagination.page
     }
     return jsonify(result), 200
+
+# --- ADMIN MANAGEMENT ENDPOINTS ---
+
+@admin_bp.route('/create-new-admin', methods=['POST'])
+@admin_required
+def create_new_admin():
+    data = request.get_json()
+    email = data.get('email')
+    full_name = data.get('fullName')
+    password = data.get('password')
+
+    if not all([email, full_name, password]):
+        return jsonify(message="Missing required fields"), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify(message="Email already exists"), 400
+
+    new_admin = User(
+        email=email,
+        full_name=full_name,
+        role='admin',
+        id_verification_status='Verified' # Admins effectively verified by creator
+    )
+    new_admin.set_password(password)
+    db.session.add(new_admin)
+    
+    log_entry = ActivityLog(
+        user_id=current_user.id, 
+        action='ADMIN_CREATED_ADMIN', 
+        details=f"Admin created new admin account for '{full_name}' ({email})."
+    )
+    db.session.add(log_entry)
+    db.session.commit()
+
+    return jsonify(message="New admin created successfully"), 201
+
+@admin_bp.route('/list-admins', methods=['GET'])
+@admin_required
+def list_admins():
+    # List all admins except potentially special super-admins if we had that distinction,
+    # but for now list all with role='admin'.
+    admins = User.query.filter_by(role='admin').all()
+    result = [{
+        'id': a.id,
+        'name': a.full_name,
+        'email': a.email,
+        'isCurrent': a.id == current_user.id
+    } for a in admins]
+    return jsonify(result), 200
+
+@admin_bp.route('/delete-admin/<int:admin_id>', methods=['DELETE'])
+@admin_required
+def delete_admin(admin_id):
+    if admin_id == current_user.id:
+        return jsonify(message="You cannot delete yourself."), 403
+        
+    admin_to_delete = User.query.get_or_404(admin_id)
+    if admin_to_delete.role != 'admin':
+        return jsonify(message="User is not an admin"), 400
+
+    # Optional: Prevent deleting the "original" super admin if known by ID (e.g., ID 1)
+    # if admin_to_delete.id == 1:
+    #     return jsonify(message="Cannot delete the root super admin"), 403
+
+    db.session.delete(admin_to_delete)
+    
+    log_entry = ActivityLog(
+        user_id=current_user.id, 
+        action='ADMIN_DELETED_ADMIN', 
+        details=f"Admin deleted admin account '{admin_to_delete.full_name}' ({admin_to_delete.email})."
+    )
+    db.session.add(log_entry)
+    db.session.commit()
+    
+    return jsonify(message="Admin deleted successfully"), 200
