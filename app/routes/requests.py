@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify
 from app.extensions import db
 from app.models.request_model import TutorRequest
+from app.models.notification_model import Notification
 from flask_login import login_required, current_user
 
 requests_bp = Blueprint('requests_bp', __name__)
@@ -59,3 +60,50 @@ def cancel_request(request_id):
     db.session.commit()
     
     return jsonify(message="Request cancelled successfully"), 200
+
+@requests_bp.route('/<int:request_id>/confirm-match', methods=['POST'])
+@login_required
+def confirm_match(request_id):
+    tutor_request = TutorRequest.query.get_or_404(request_id)
+    
+    if current_user.id != tutor_request.parent_id:
+        return jsonify(message="Unauthorized"), 403
+        
+    if tutor_request.status != 'Pending Acceptance':
+        return jsonify(message="Request is not pending acceptance"), 400
+        
+    tutor_request.status = 'Matched'
+    db.session.commit()
+    
+    # Notify Teacher that Parent accepted
+    if tutor_request.assigned_teacher_id:
+        teacher = tutor_request.assigned_teacher
+        # In-App Notification
+        notif = Notification(user_id=teacher.id, title="Assignment Confirmed!", message=f"Parent has confirmed the match for {tutor_request.subjects}. You can now start lessons.", type="success")
+        db.session.add(notif)
+        db.session.commit()
+        
+        # Push Notification
+        from app.services.push_service import send_push_notification
+        if teacher.push_token:
+            send_push_notification(teacher.push_token, "Assignment Confirmed!", f"Parent has confirmed the match for {tutor_request.subjects}.", data={'requestId': request_id}) 
+
+    return jsonify(message="Tutor match confirmed! You can now message your tutor."), 200
+
+@requests_bp.route('/<int:request_id>/reject-match', methods=['POST'])
+@login_required
+def reject_match(request_id):
+    tutor_request = TutorRequest.query.get_or_404(request_id)
+    
+    if current_user.id != tutor_request.parent_id:
+        return jsonify(message="Unauthorized"), 403
+
+    if tutor_request.status != 'Pending Acceptance':
+        return jsonify(message="Request is not pending acceptance"), 400
+        
+    # Unassign logic
+    tutor_request.assigned_teacher_id = None
+    tutor_request.status = 'Pending' # Back to pool
+    db.session.commit()
+    
+    return jsonify(message="Match rejected. We will look for another tutor."), 200

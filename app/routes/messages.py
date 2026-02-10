@@ -45,6 +45,17 @@ def send_message(request_id):
     db.session.add(new_message)
     db.session.commit()
     
-    # We could trigger a push notification to the recipient here
+    # Trigger push notification
+    from app.services.push_service import send_push_notification
+    from app.models.user_model import User
+    
+    recipient = User.query.get(recipient_id)
+    if recipient and recipient.push_token:
+        send_push_notification(
+            recipient.push_token, 
+            "New Message", 
+            f"New message from {current_user.full_name}: {body[:50]}...", 
+            data={'requestId': request_id, 'screen': 'Chat', 'title': current_user.full_name}
+        )
     
     return jsonify(message="Message sent"), 201

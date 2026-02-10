@@ -205,6 +205,13 @@ def match_tutor():
     db.session.add(notif_teacher)
     db.session.commit()
 
+    # Send Push Notifications
+    from app.services.push_service import send_push_notification
+    if parent.push_token:
+        send_push_notification(parent.push_token, "Tutor Matched!", f"A tutor has been assigned for your request for {tutor_request.subjects}.", data={'requestId': request_id})
+    if teacher.push_token:
+        send_push_notification(teacher.push_token, "New Job Offer!", f"You have been offered a new tutoring request for {tutor_request.subjects}.", data={'requestId': request_id})
+
     return jsonify(message=f"Successfully matched {teacher.full_name} to request #{request_id}"), 200
 
 @admin_bp.route('/requests/<int:request_id>/confirm-payment', methods=['POST'])
