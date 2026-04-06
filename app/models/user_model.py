@@ -21,6 +21,9 @@ class User(db.Model, UserMixin):
     # NEW FIELD for Push Notifications
     push_token = db.Column(db.String(255), nullable=True)
 
+    # NEW FIELD for News tracking
+    last_news_read_at = db.Column(db.DateTime, default=None, nullable=True)
+
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 

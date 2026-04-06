@@ -3,6 +3,7 @@ from app.extensions import db
 from app.models.user_model import User
 from app.models.request_model import TutorRequest
 from app.models.notification_model import Notification
+from app.models.news_model import News
 from flask_login import login_required, current_user
 from app.utils.crypto import encrypt_data
 from sqlalchemy import func
@@ -38,6 +39,13 @@ def dashboard_summary():
     user_id = current_user.id
 
     unread_count = Notification.query.filter_by(user_id=user_id, is_read=False).count()
+    
+    # Calculate unread news
+    news_query = News.query.filter_by(is_published=True)
+    if current_user.last_news_read_at:
+        unread_news_count = news_query.filter(News.created_at > current_user.last_news_read_at).count()
+    else:
+        unread_news_count = news_query.count()
 
     if current_user.role == 'parent':
         active_requests = db.session.query(func.count(TutorRequest.id)).filter(TutorRequest.parent_id == user_id, TutorRequest.status == 'Pending').scalar()
@@ -54,7 +62,8 @@ def dashboard_summary():
         return jsonify({
             'kpis': [{'label': 'Active Requests', 'value': active_requests}, {'label': 'Matched Tutors', 'value': matched_tutors}, {'label': 'Completed', 'value': completed}],
             'latestItem': latest_request_data,
-            'unreadCount': unread_count
+            'unreadCount': unread_count,
+            'unreadNewsCount': unread_news_count
         }), 200
 
     elif current_user.role == 'teacher':
@@ -70,7 +79,8 @@ def dashboard_summary():
         return jsonify({
             'kpis': [{'label': 'New Requests', 'value': available}, {'label': 'Your Students', 'value': assigned}, {'label': 'Sessions', 'value': completed}],
             'latestItem': latest_assignment_data,
-            'unreadCount': unread_count
+            'unreadCount': unread_count,
+            'unreadNewsCount': unread_news_count
         }), 200
 
     return jsonify({'message': 'Invalid role'}), 400
@@ -106,3 +116,11 @@ def register_push_token():
     db.session.commit()
     
     return jsonify(message="Token registered successfully"), 200
+
+@users_bp.route('/news-read', methods=['POST'])
+@login_required
+def mark_news_read():
+    user = User.query.get(current_user.id)
+    user.last_news_read_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify(message="News marked as read"), 200
