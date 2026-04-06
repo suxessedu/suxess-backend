@@ -16,7 +16,7 @@ def create_app(config_class=Config):
     
     with app.app_context():
         # THE DEFINITIVE FIX: Import the new model here so the database tool can see it.
-        from .models import user_model, teacher_profile_model, request_model, activity_log_model, lesson_log_model, notification_model
+        from .models import user_model, teacher_profile_model, request_model, activity_log_model, lesson_log_model, notification_model, news_model
         
         from .routes.auth import auth_bp
         from .routes.teachers import teachers_bp
@@ -27,6 +27,7 @@ def create_app(config_class=Config):
         from .routes.messages import messages_bp
         from .routes.common import common_bp
         from .routes.notifications import notifications_bp
+        from .routes.news_routes import news_bp
         
         app.register_blueprint(auth_bp, url_prefix='/api/auth')
         app.register_blueprint(teachers_bp, url_prefix='/api/teachers')
@@ -37,5 +38,6 @@ def create_app(config_class=Config):
         app.register_blueprint(messages_bp, url_prefix='/api/messages')
         app.register_blueprint(common_bp, url_prefix='/api/common')
         app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+        app.register_blueprint(news_bp, url_prefix='/api/news')
 
     return app

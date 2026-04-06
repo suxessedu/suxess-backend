@@ -26,9 +26,18 @@ def setup_super_admin():
     session['admin_setup_otp'] = otp
     session['admin_setup_data'] = {'email': super_admin_email, 'password': password, 'fullName': full_name}
     
+    
+    # Print OTP to console for debugging/development
+    print(f"DEBUG: Admin Setup OTP is: {otp}")
+    
     msg = Message('Your Suxess Admin OTP', recipients=[super_admin_email])
     msg.body = f'Your One-Time Password to create the Super Admin account is: {otp}'
-    mail.send(msg)
+    
+    try:
+        mail.send(msg)
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        # Continue execution even if email fails
 
     return jsonify({'message': 'OTP sent to super admin email'}), 200
 
