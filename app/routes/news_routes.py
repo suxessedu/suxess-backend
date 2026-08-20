@@ -67,21 +67,23 @@ def create_news():
     # Send Push Notification Logic
     if send_push:
         # Retrieve tokens based on target_role
-        tokens = []
-        if target_role == 'all':
-            users = User.query.filter(User.push_token.isnot(None)).all()
-        else:
-            users = User.query.filter(User.push_token.isnot(None), User.role == target_role).all()
+        query = User.query.filter(User.push_token.isnot(None))
+        if target_role and target_role != 'all':
+            query = query.filter(User.role == target_role)
             
-        for user in users:
-            if user.push_token:
-               # Send push notification
-               # Note: In a real production app, this should be a background task (Celery/RQ)
-               # But for now, we'll do it synchronously or rely on the push_service implementation
-               try:
-                   send_push_notification(user.push_token, "News Update: " + title, "Tap to read the latest update.", data={'newsId': new_news.id})
-               except Exception as e:
-                   print(f"Error sending push to {user.email}: {e}")
+        users = query.all()
+        tokens = [u.push_token for u in users if u.push_token]
+        if tokens:
+            try:
+                from app.services.push_service import send_push_notifications
+                send_push_notifications(
+                    tokens=tokens,
+                    title=f"📢 Suxess Update: {title}",
+                    body="Tap to read the latest announcement.",
+                    data={'newsId': new_news.id}
+                )
+            except Exception as e:
+                print(f"Error broadcasting news push: {e}")
 
     return jsonify(new_news.to_dict()), 201
 
