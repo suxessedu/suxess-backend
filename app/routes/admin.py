@@ -208,9 +208,19 @@ def match_tutor():
     # Send Push Notifications
     from app.services.push_service import send_push_notification
     if parent.push_token:
-        send_push_notification(parent.push_token, "Tutor Matched!", f"A tutor has been assigned for your request for {tutor_request.subjects}.", data={'requestId': request_id})
+        send_push_notification(
+            parent.push_token,
+            "You've been matched! 🎓",
+            f"{teacher.full_name} is ready to teach {tutor_request.subjects}. Tap to review and accept.",
+            data={'requestId': request_id, 'type': 'match'}
+        )
     if teacher.push_token:
-        send_push_notification(teacher.push_token, "New Job Offer!", f"You have been offered a new tutoring request for {tutor_request.subjects}.", data={'requestId': request_id})
+        send_push_notification(
+            teacher.push_token,
+            "New Job Offer! 📚",
+            f"You have a new tutoring match request for {tutor_request.subjects}. Tap to accept or decline.",
+            data={'requestId': request_id, 'type': 'match'}
+        )
 
     return jsonify(message=f"Successfully matched {teacher.full_name} to request #{request_id}"), 200
 
